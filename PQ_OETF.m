@@ -1,0 +1,11 @@
+function V = PQ_OETF(C, bitDepth)
+L = C ./ 10000;
+m1 = 2610/4096/4;
+m2 = 2523/4096*128;
+c2 = 2413/4096*32;
+c3 = 2392/4096*32;
+c1 = c3 - c2 + 1;
+numerator = c1 + c2 .* L .^ m1;
+denominator = 1 + c3 .* L .^ m1;
+N = (numerator ./ denominator) .^ m2;
+V = floor(1/2 + (2 ^ bitDepth - 1) .* N);

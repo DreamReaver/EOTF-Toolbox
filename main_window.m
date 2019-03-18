@@ -117,6 +117,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit1_gamma_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit1_gamma (see GCBO)
@@ -162,7 +163,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-
 function edit3_min_L_Callback(hObject, eventdata, handles)
 % hObject    handle to edit3_min_L (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -182,6 +182,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit3_min_L_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit3_min_L (see GCBO)
@@ -193,7 +194,6 @@ function edit3_min_L_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function edit4_max_L_Callback(hObject, eventdata, handles)
@@ -215,6 +215,7 @@ else
         set(hObject,'String', '10000');
     end
 end
+
 
 % --- Executes during object creation, after setting all properties.
 function edit4_max_L_CreateFcn(hObject, eventdata, handles)
@@ -243,66 +244,108 @@ switch x
     case 3
         bitDepth = 12;
 end
+maxValue = 2 ^ bitDepth - 1;
 
 gamma = str2double(get(handles.edit1_gamma,'String'));
-RefL = str2double(get(handles.edit2_ref_L,'String'));
-minL = str2double(get(handles.edit3_min_L,'String'));
-maxL = str2double(get(handles.edit4_max_L,'String'));
+LRef = str2double(get(handles.edit2_ref_L,'String'));
+LMin = str2double(get(handles.edit3_min_L,'String'));
+LMax = str2double(get(handles.edit4_max_L,'String'));
 
-Cval =[minL,maxL];
-%*********************** PQ OETF ******************************
-PQV = PQ_OETF(Cval, bitDepth); % 亮度反推的PQ码值（左右区间端点）
-PQLE = PQV(2) - PQV(1) + 1; % PQ码值区间长度
-PercPQ = PQLE / 2 ^ bitDepth * 100; % 百分比
+%*********************** PQ ******************************
+PQLEnds =[LMin, LMax]; % PQ左右端点亮度
+PQValueEnds = PQ_OETF(PQLEnds, bitDepth); % PQ左右端点码值
+PQIntervalLength = PQValueEnds(2) - PQValueEnds(1); % PQ码值区间长度
+PQIntervalPerc = PQIntervalLength / maxValue * 100; % PQ码值区间百分比
+if PQIntervalLength == 0 % 区间长度为0的情况
+    if PQValueEnds(1) == maxValue
+        v1 = maxValue - 1;
+        v2 = maxValue;
+    else
+        v1 = PQValueEnds(1);
+        v2 = PQValueEnds(1) + 1;
+    end
+    PQMinStep = PQ_EOTF(v2, bitDepth) - PQ_EOTF(v1, bitDepth);
+    PQMaxStep = PQMinStep;
+else
+    PQValues = PQValueEnds(1):PQValueEnds(2); % 区间内所有码值
+    PQ_L = PQ_EOTF(PQValues, bitDepth); % 反推亮度
+    PQMinStep = PQ_L(2) - PQ_L(1); % 左端点处亮度步长
+    PQMaxStep = PQ_L(end) - PQ_L(end-1); % 右端点处亮度步长
+end
 
 %********************** Gamma **********************
-% Normalization in [0,1]
-if (maxL > RefL)
-    Cval(2) = RefL;
+GammaLEnds =[LMin, LMax]; % Gamma左右端点亮度
+if LMin > LRef
+    GammaLEnds(1) = LRef; % 如果最小亮度超过参考亮度，则Gamma最小亮度改为参考值
 end
-NormL = Cval / RefL; % 亮度值除以参考亮度，标准化
-midre = NormL .^ (1/gamma);
-N = (2 ^ bitDepth - 1) .* midre;
-GAMV = floor(N); % Gamma码值
-GamLE = GAMV(2)-GAMV(1)+1; % Gamma区间长度
-PercGam = GamLE/2^bitDepth*100; % 百分比
+if LMax > LRef
+    GammaLEnds(2) = LRef; % 如果最大亮度超过参考亮度，则Gamma最大亮度改为参考值
+end
+gammaValueEnds = Gamma_OETF(GammaLEnds, bitDepth, gamma, LRef); % Gamma左右端点码值
+gammaIntervalLength = gammaValueEnds(2) - gammaValueEnds(1); % Gamma码值区间长度
+gammaIntervalPerc = gammaIntervalLength / maxValue * 100; % Gamma码值区间百分比
+if gammaIntervalLength == 0 % 区间长度为0的情况
+    if gammaValueEnds(1) == maxValue
+        gammaMinStep = ...
+        Gamma_EOTF(maxValue, bitDepth, gamma, LRef) ...
+        - Gamma_EOTF(maxValue - 1, bitDepth, gamma, LRef);
+        gammaMaxStep = gammaMinStep;
+    elseif gammaValueEnds(1) == 0
+        gammaMinStep = ...
+        Gamma_EOTF(1, bitDepth, gamma, LRef) ...
+        - Gamma_EOTF(0, bitDepth, gamma, LRef);
+        gammaMaxStep = gammaMinStep;
+    end
+else
+    gammaValues = gammaValueEnds(1):gammaValueEnds(2); % 区间内所有码值
+    Gamma_L = Gamma_EOTF(gammaValues, bitDepth, gamma, LRef); % 反推亮度
+    gammaMinStep = Gamma_L(2) - Gamma_L(1); % 左端点处亮度步长
+    gammaMaxStep = Gamma_L(end) - Gamma_L(end-1);  % 右端点处亮度步长
+end
 
+%********************** 画图 **********************
 axes(handles.axes1);
 cla reset;
-axis auto;
+if PQIntervalLength ~= 0 && gammaIntervalLength ~= 0
+    plot(PQValues,PQ_L,'g-','LineWidth',2,'DisplayName','PQ');
+    hold on;
+    plot(gammaValues,Gamma_L,'r-','LineWidth',2,...
+        'DisplayName',['Gamma ' get(handles.edit1_gamma,'String')]);
+    hold off;
+    axis([min(PQValueEnds(1),gammaValueEnds(1)) max(PQValueEnds(2),gammaValueEnds(2)) LMin LMax]);
+    xlabel(['Code Value (' num2str(bitDepth) ' bits)']);
+    ylabel('Luminance (nits)');
+    grid on;
+    legend();
+elseif PQIntervalLength ~= 0 && gammaIntervalLength == 0
+    plot(PQValues,PQ_L,'g-','LineWidth',2,'DisplayName','PQ');
+    axis([PQValueEnds(1) PQValueEnds(2) LMin LMax]);
+    xlabel(['Code Value (' num2str(bitDepth) ' bits)']);
+    ylabel('Luminance (nits)');
+    grid on;
+    legend();
+elseif PQIntervalLength == 0 && gammaIntervalLength ~= 0
+    plot(gammaValues,Gamma_L,'r-','LineWidth',2,...
+        'DisplayName',['Gamma ' get(handles.edit1_gamma,'String')]);
+    axis([gammaValueEnds(1) gammaValueEnds(2) LMin LMax]);
+    xlabel(['Code Value (' num2str(bitDepth) ' bits)']);
+    ylabel('Luminance (nits)');
+    grid on;
+    legend();
+else
+end
 
-%********************Plot figure***************** 
-% 反推区间内PQ全部亮度
-CoPQ = PQV(1):PQV(2);
-LValue = PQ_EOTF(CoPQ, bitDepth);
-MinStepPQ = LValue(2) - LValue(1);
-MaxStepPQ = LValue(end) - LValue(end-1);
-plot(CoPQ,LValue,'g-','LineWidth',2);
-hold on;
-% 反推区间内Gamma全部亮度
-Cogam = GAMV(1):GAMV(2);
-midre = Cogam ./ (2 ^ bitDepth - 1);
-midre2 = midre .^ gamma;
-LValue = RefL * midre2;
-MinStepGamma = LValue(2) - LValue(1);
-MaxStepGamma = LValue(end) - LValue(end-1);
-plot(Cogam,LValue,'r-','LineWidth',2);
-hold off;
 
-xlabel(['Code Value (' num2str(bitDepth) ' bits)']);
-ylabel('Luminance (nits)');
-axis([min(PQV(1),GAMV(1)) max(PQV(2),GAMV(2)) minL maxL]);
-legend('PQ','Gamma');
-grid on;
-
-
-newData = [PQV(1),GAMV(1);
-    MinStepPQ, MinStepGamma;
-    PQV(2),GAMV(2);
-    MaxStepPQ, MaxStepGamma;
-    PQLE, GamLE;
-    PercPQ, PercGam];
+newData = [
+    PQValueEnds(1),gammaValueEnds(1);
+    PQMinStep, gammaMinStep;
+    PQValueEnds(2),gammaValueEnds(2);
+    PQMaxStep, gammaMaxStep;
+    PQIntervalLength, gammaIntervalLength;
+    PQIntervalPerc, gammaIntervalPerc
+    ];
 set(handles.uitable1,'data',newData);
+
 
 % --- Executes on selection change in popupmenu3_bit_depth.
 function popupmenu3_bit_depth_Callback(hObject, eventdata, handles)
@@ -320,6 +363,7 @@ set(handles.edit14_Y, 'String', '0');
 set(handles.edit15_Z, 'String', '0');
 set(handles.text19_L, 'String', '0.000');
 
+
 % --- Executes during object creation, after setting all properties.
 function popupmenu3_bit_depth_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to popupmenu3_bit_depth (see GCBO)
@@ -331,7 +375,6 @@ function popupmenu3_bit_depth_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function edit10_R_Callback(hObject, eventdata, handles)
@@ -363,6 +406,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit10_R_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit10_R (see GCBO)
@@ -374,8 +418,6 @@ function edit10_R_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
 
 
 function edit11_G_Callback(hObject, eventdata, handles)
@@ -407,6 +449,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit11_G_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit11_G (see GCBO)
@@ -418,7 +461,6 @@ function edit11_G_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function edit12_B_Callback(hObject, eventdata, handles)
@@ -450,6 +492,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit12_B_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit12_B (see GCBO)
@@ -461,7 +504,6 @@ function edit12_B_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function edit13_X_Callback(hObject, eventdata, handles)
@@ -480,6 +522,7 @@ else
     end
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit13_X_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit13_X (see GCBO)
@@ -491,6 +534,7 @@ function edit13_X_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
 
 function edit14_Y_Callback(hObject, eventdata, handles)
 % hObject    handle to edit14_Y (see GCBO)
@@ -509,7 +553,6 @@ else
 end
 
 
-
 % --- Executes during object creation, after setting all properties.
 function edit14_Y_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit14_Y (see GCBO)
@@ -521,7 +564,6 @@ function edit14_Y_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 function edit15_Z_Callback(hObject, eventdata, handles)
@@ -541,7 +583,6 @@ else
 end
 
 
-
 % --- Executes during object creation, after setting all properties.
 function edit15_Z_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit15_Z (see GCBO)
@@ -553,7 +594,6 @@ function edit15_Z_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
 
 
 % --- Executes on button press in pushbutton2_right_convert.
@@ -591,6 +631,7 @@ set(handles.edit13_X, 'String', num2str(XYZ(1)));
 set(handles.edit14_Y, 'String', num2str(XYZ(2)));
 set(handles.edit15_Z, 'String', num2str(XYZ(3)));
 set(handles.text19_L, 'String', num2str(L, '%.3f'));
+
 
 % --- Executes on button press in pushbutton3_left_convert.
 function pushbutton3_left_convert_Callback(hObject, eventdata, handles)
@@ -749,6 +790,7 @@ else
     set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b,8)));
 end
 
+
 % --- Executes during object creation, after setting all properties.
 function edit16_8_bit_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit16_8_bit (see GCBO)
@@ -787,6 +829,7 @@ else
     set(handles.edit18_12_bit, 'String', num2str(b*4095/1023));
     set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b,10)));
 end
+
 
 % --- Executes during object creation, after setting all properties.
 function edit17_10_bit_CreateFcn(hObject, eventdata, handles)
@@ -866,6 +909,7 @@ else
     set(handles.edit17_10_bit, 'String', num2str(PQ_OETF(b,10)));
     set(handles.edit18_12_bit, 'String', num2str(PQ_OETF(b,12)));
 end
+
 
 % --- Executes during object creation, after setting all properties.
 function edit19_PQ_Luminance_CreateFcn(hObject, eventdata, handles)

@@ -8,4 +8,4 @@ c1 = c3 - c2 + 1;
 numerator = c1 + c2 .* L .^ m1;
 denominator = 1 + c3 .* L .^ m1;
 N = (numerator ./ denominator) .^ m2;
-V = floor(1/2 + (2 ^ bitDepth - 1) .* N);
+V = round((2 ^ bitDepth - 1) .* N);

@@ -178,7 +178,7 @@ else
     if b < 0
         set(hObject,'String', '0');
     elseif b >= maxL
-        set(hObject,'String', num2str(maxL - 1));
+        set(hObject,'String', num2str(maxL));
     end
 end
 
@@ -210,7 +210,7 @@ if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
 else
     b = str2double(get(hObject,'String'));
     if b <= minL
-        set(hObject,'String', num2str(minL + 1));
+        set(hObject,'String', num2str(minL));
     elseif b > 10000
         set(hObject,'String', '10000');
     end

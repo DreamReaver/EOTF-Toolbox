@@ -22,7 +22,7 @@ function varargout = main_window(varargin)
 
 % Edit the above text to modify the response to help main_window
 
-% Last Modified by GUIDE v2.5 11-Mar-2019 17:48:11
+% Last Modified by GUIDE v2.5 19-Mar-2019 12:59:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -53,7 +53,8 @@ function main_window_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to main_window (see VARARGIN)
 addpath(genpath(pwd));
 
-pushbutton1_Callback(hObject, eventdata, handles)
+pushbutton1_Callback(hObject, eventdata, handles);
+pushbutton2_right_convert_Callback(hObject, eventdata, handles);
 
 % Choose default command line output for main_window
 handles.output = hObject;
@@ -772,10 +773,7 @@ function edit16_8_bit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit16_8_bit as text
 %        str2double(get(hObject,'String')) returns contents of edit16_8_bit as a double
 if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
-    set(hObject,'String', '0');
-    set(handles.edit17_10_bit, 'String', '0');
-    set(handles.edit18_12_bit, 'String', '0');
-    set(handles.edit19_PQ_Luminance, 'String', '0');
+    pushbutton4_reset_Callback(hObject, eventdata, handles);
 else
     b = str2double(get(hObject,'String'));
     if b < 0
@@ -788,6 +786,7 @@ else
     set(handles.edit17_10_bit, 'String', num2str(b*1023/255));
     set(handles.edit18_12_bit, 'String', num2str(b*4095/255));
     set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b,8)));
+    set(handles.edit20_percentage, 'String', num2str(b/255*100));
 end
 
 
@@ -812,10 +811,7 @@ function edit17_10_bit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit17_10_bit as text
 %        str2double(get(hObject,'String')) returns contents of edit17_10_bit as a double
 if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
-    set(hObject,'String', '0');
-    set(handles.edit16_8_bit, 'String', '0');
-    set(handles.edit18_12_bit, 'String', '0');
-    set(handles.edit19_PQ_Luminance, 'String', '0');
+    pushbutton4_reset_Callback(hObject, eventdata, handles);
 else
     b = str2double(get(hObject,'String'));
     if b < 0
@@ -828,6 +824,7 @@ else
     set(handles.edit16_8_bit, 'String', num2str(b*255/1023));
     set(handles.edit18_12_bit, 'String', num2str(b*4095/1023));
     set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b,10)));
+    set(handles.edit20_percentage, 'String', num2str(b/1023*100));
 end
 
 
@@ -852,10 +849,7 @@ function edit18_12_bit_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit18_12_bit as text
 %        str2double(get(hObject,'String')) returns contents of edit18_12_bit as a double
 if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
-    set(hObject,'String', '0');
-    set(handles.edit16_8_bit, 'String', '0');
-    set(handles.edit17_10_bit, 'String', '0');
-    set(handles.edit19_PQ_Luminance, 'String', '0');
+    pushbutton4_reset_Callback(hObject, eventdata, handles);
 else
     b = str2double(get(hObject,'String'));
     if b < 0
@@ -868,6 +862,7 @@ else
     set(handles.edit16_8_bit, 'String', num2str(b*255/4095));
     set(handles.edit17_10_bit, 'String', num2str(b*1023/4095));
     set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b,12)));
+    set(handles.edit20_percentage, 'String', num2str(b/4095*100));
 end
 
 
@@ -892,10 +887,7 @@ function edit19_PQ_Luminance_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of edit19_PQ_Luminance as text
 %        str2double(get(hObject,'String')) returns contents of edit19_PQ_Luminance as a double
 if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
-    set(hObject,'String', '0');
-    set(handles.edit16_8_bit, 'String', '0');
-    set(handles.edit17_10_bit, 'String', '0');
-    set(handles.edit18_12_bit, 'String', '0');
+    pushbutton4_reset_Callback(hObject, eventdata, handles);
 else
     b = str2double(get(hObject,'String'));
     if b < 0
@@ -908,6 +900,7 @@ else
     set(handles.edit16_8_bit, 'String', num2str(PQ_OETF(b,8)));
     set(handles.edit17_10_bit, 'String', num2str(PQ_OETF(b,10)));
     set(handles.edit18_12_bit, 'String', num2str(PQ_OETF(b,12)));
+    set(handles.edit20_percentage, 'String', num2str(PQ_OETF(b,8)/255*100));
 end
 
 
@@ -922,3 +915,66 @@ function edit19_PQ_Luminance_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+function edit20_percentage_Callback(hObject, eventdata, handles)
+% hObject    handle to edit20_percentage (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit20_percentage as text
+%        str2double(get(hObject,'String')) returns contents of edit20_percentage as a double
+if isempty(get(hObject,'String')) | isnan(str2double(get(hObject,'String')))
+    pushbutton4_reset_Callback(hObject, eventdata, handles);
+else
+    b = str2double(get(hObject,'String'));
+    if b < 0
+        b = 0;
+        set(hObject,'String', '0');
+    elseif b > 100
+        b = 100;
+        set(hObject,'String', '4095');
+    end
+    set(handles.edit16_8_bit, 'String', num2str(b/100*255));
+    set(handles.edit17_10_bit, 'String', num2str(b/100*1023));
+    set(handles.edit18_12_bit, 'String', num2str(b/100*4095));
+    set(handles.edit19_PQ_Luminance, 'String', num2str(PQ_EOTF(b/100*255,8)));
+end
+
+% --- Executes during object creation, after setting all properties.
+function edit20_percentage_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit20_percentage (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pushbutton4_reset.
+function pushbutton4_reset_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton4_reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.edit16_8_bit, 'String', '0');
+set(handles.edit17_10_bit, 'String', '0');
+set(handles.edit18_12_bit, 'String', '0');
+set(handles.edit19_PQ_Luminance, 'String', '0');
+set(handles.edit20_percentage, 'String', '0');
+
+
+% --- Executes on button press in pushbutton5_reset.
+function pushbutton5_reset_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton5_reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+set(handles.edit10_R, 'String', '0');
+set(handles.edit11_G, 'String', '0');
+set(handles.edit12_B, 'String', '0');
+set(handles.edit13_X, 'String', '0');
+set(handles.edit14_Y, 'String', '0');
+set(handles.edit15_Z, 'String', '0');

@@ -54,7 +54,15 @@ function main_window_OpeningFcn(hObject, eventdata, handles, varargin)
 addpath(genpath(pwd));
 
 pushbutton1_Callback(hObject, eventdata, handles);
-pushbutton2_right_convert_Callback(hObject, eventdata, handles);
+list=get(handles.popupmenu7_gamut,'String');
+val=get(handles.popupmenu7_gamut,'Value');
+gamut = list{val};
+list=get(handles.popupmenu9_white_point,'String');
+val=get(handles.popupmenu9_white_point,'Value');
+whitePoint = list{val};
+M = Matrix(gamut, whitePoint);
+set(handles.uitable4, 'data', M);
+set(handles.uitable5, 'data', inv(M));
 
 % Choose default command line output for main_window
 handles.output = hObject;
@@ -616,16 +624,7 @@ switch x
         bitDepth = 12;
 end
 
-list=get(handles.popupmenu7_gamut,'String');
-val=get(handles.popupmenu7_gamut,'Value');
-gamut = list{val};
-list=get(handles.popupmenu9_white_point,'String');
-val=get(handles.popupmenu9_white_point,'Value');
-whitePoint = list{val};
-M = Matrix(gamut, whitePoint);
-set(handles.uitable4, 'data', M);
-set(handles.uitable5, 'data', inv(M));
-
+M = get(handles.uitable4, 'data');
 [XYZ, L] = RGB_to_XYZ(bitDepth, [R, G, B], M);
 
 set(handles.edit13_X, 'String', num2str(XYZ(1)));
@@ -654,17 +653,8 @@ switch x
         bitDepth = 12;
 end
 
-list=get(handles.popupmenu7_gamut,'String');
-val=get(handles.popupmenu7_gamut,'Value');
-gamut = list{val};
-list=get(handles.popupmenu9_white_point,'String');
-val=get(handles.popupmenu9_white_point,'Value');
-whitePoint = list{val};
-M = Matrix(gamut, whitePoint);
-set(handles.uitable4, 'data', M);
-set(handles.uitable5, 'data', inv(M));
-
-RGB = XYZ_to_RGB(bitDepth, [X, Y, Z], inv(M));
+invM = get(handles.uitable5, 'data');
+RGB = XYZ_to_RGB(bitDepth, [X, Y, Z], invM);
 L = XYZ_to_Luminance(bitDepth, [X, Y, Z]);
 
 set(handles.edit10_R, 'String', num2str(RGB(1)));
@@ -704,7 +694,15 @@ function popupmenu7_gamut_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns popupmenu7_gamut contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from popupmenu7_gamut
-
+list=get(hObject,'String');
+val=get(hObject,'Value');
+gamut = list{val};
+list=get(handles.popupmenu9_white_point,'String');
+val=get(handles.popupmenu9_white_point,'Value');
+whitePoint = list{val};
+M = Matrix(gamut, whitePoint);
+set(handles.uitable4, 'data', M);
+set(handles.uitable5, 'data', inv(M));
 
 % --- Executes during object creation, after setting all properties.
 function popupmenu7_gamut_CreateFcn(hObject, eventdata, handles)
@@ -727,7 +725,15 @@ function popupmenu9_white_point_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns popupmenu9_white_point contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from popupmenu9_white_point
-
+list=get(handles.popupmenu7_gamut,'String');
+val=get(handles.popupmenu7_gamut,'Value');
+gamut = list{val};
+list=get(hObject,'String');
+val=get(hObject,'Value');
+whitePoint = list{val};
+M = Matrix(gamut, whitePoint);
+set(handles.uitable4, 'data', M);
+set(handles.uitable5, 'data', inv(M));
 
 % --- Executes during object creation, after setting all properties.
 function popupmenu9_white_point_CreateFcn(hObject, eventdata, handles)
